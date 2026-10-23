@@ -51,8 +51,8 @@
     var config = {
       arguments: [],
       dataUrl: buildUrl + "/WebGL.data.unityweb",
-      frameworkUrl: buildUrl + "/WebGL.framework.js.unityweb",
-      codeUrl: buildUrl + "/WebGL.wasm.unityweb",
+      frameworkUrl: buildUrl + "/WebGL.framework.js.unityweb?v=521c594622",
+      codeUrl: buildUrl + "/WebGL.wasm.unityweb?v=521c594622",
       streamingAssetsUrl: "StreamingAssets",
       companyName: "Funday Morning",
       productName: "Swooosh!",
@@ -71,7 +71,7 @@
     }
 
     var script = document.createElement("script");
-    script.src = buildUrl + "/WebGL.loader.js";
+    script.src = buildUrl + "/WebGL.loader.js?v=521c594622";
     script.onload = function () {
       createUnityInstance(canvas, config, function (p) {
         document.querySelector("#fill").style.width = Math.round(p * 100) + "%";
