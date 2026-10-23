@@ -24,6 +24,10 @@
     #fill { width: 0; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #ff6b6b, #ffc23c, #22b8a7, #4da8f0); transition: width .2s ease; }
     #note { color: #7a6e86; font-size: 13px; letter-spacing: .04em; }
     #error { display: none; max-width: 300px; color: #3b2f4a; text-align: center; font-size: 15px; line-height: 1.5; padding: 0 16px; }
+    #halt { display: none; position: fixed; inset: 0; z-index: 10; align-items: center; justify-content: center; background: rgba(59, 47, 74, .55); }
+    #halt div { max-width: 300px; margin: 0 20px; padding: 22px 20px; border-radius: 22px; background: #fff8f0; color: #3b2f4a; text-align: center; font-size: 16px; line-height: 1.45; }
+    #halt button { margin-top: 14px; padding: 12px 26px; border: 0; border-radius: 16px; background: #6cc56b; color: #fff; font: 800 17px system-ui, sans-serif; }
+    #halt small { display: block; margin-top: 12px; color: #7a6e86; font-size: 11px; word-break: break-word; }
   </style>
 </head>
 <body>
@@ -37,8 +41,15 @@
       <div id="error"></div>
     </div>
   </div>
+  <div id="halt"><div><span id="halt-msg"></span><br><button id="halt-btn"></button><small id="halt-why"></small></div></div>
   <script>
     var canvas = document.querySelector("#unity-canvas");
+    // Oyun döngüsü bekçisi: Unity her karede requestAnimationFrame çağırır; çağrılar durursa oyun takılmıştır.
+    var lastFrame = Date.now(), lastError = "";
+    var raf = window.requestAnimationFrame.bind(window);
+    window.requestAnimationFrame = function (cb) { return raf(function (t) { lastFrame = Date.now(); cb(t); }); };
+    window.addEventListener("error", function (e) { lastError = String(e.message || e).slice(0, 300); });
+    window.addEventListener("unhandledrejection", function (e) { lastError = String(e.reason && (e.reason.message || e.reason)).slice(0, 300); });
     var tr = (navigator.language || "").toLowerCase().indexOf("tr") === 0;
     document.querySelector("#note").textContent = tr ? "Yükleniyor…" : "Loading…";
     var cols = ["#ff6b6b", "#ffc23c", "#22b8a7", "#4da8f0", "#8e6cf0", "#6cc56b", "#ff7eb6", "#ff6b6b"];
@@ -51,8 +62,8 @@
     var config = {
       arguments: [],
       dataUrl: buildUrl + "/WebGL.data.unityweb",
-      frameworkUrl: buildUrl + "/WebGL.framework.js.unityweb?v=521c594622",
-      codeUrl: buildUrl + "/WebGL.wasm.unityweb?v=521c594622",
+      frameworkUrl: buildUrl + "/WebGL.framework.js.unityweb?v=b69c6b432f",
+      codeUrl: buildUrl + "/WebGL.wasm.unityweb?v=b69c6b432f",
       streamingAssetsUrl: "StreamingAssets",
       companyName: "Funday Morning",
       productName: "Swooosh!",
@@ -62,7 +73,38 @@
       showBanner: function (msg, type) { if (type === "error") showError(msg); },
     };
 
+    // Açıldıktan sonraki sorunlar: yükleme ekranı kalktığı için ayrı bir katmanda gösterilir.
+    function showHalt(why) {
+      var h = document.querySelector("#halt");
+      if (h.style.display === "flex") return;
+      document.querySelector("#halt-msg").textContent = tr ? "Oyun takıldı. Yeniden yükleyince kaldığın yerden devam edersin." : "The game got stuck. Reload to continue where you left off.";
+      document.querySelector("#halt-btn").textContent = tr ? "Yeniden yükle" : "Reload";
+      document.querySelector("#halt-why").textContent = why || "";
+      h.style.display = "flex";
+    }
+    document.querySelector("#halt-btn").onclick = function () { location.reload(); };
+    canvas.addEventListener("webglcontextlost", function () { showHalt("webglcontextlost"); });
+
+    // Dokunma yedeği: her dokunuş oyuna SendMessage ile de iletilir (Game/TouchBridge.cs). Unity dokunuşu kendisi aldıysa
+    // yedek kullanılmaz; bazı iPhone Safari'lerde Unity'nin kendi dokunma girdisi oyuna ulaşmıyor.
+    var lastMove = 0;
+    function touch(phase, e) {
+      var t = e.changedTouches && e.changedTouches[0];
+      if (!window.unityInstance || !t) return;
+      if (phase === "m") { var now = Date.now(); if (now - lastMove < 30) return; lastMove = now; }
+      var r = canvas.getBoundingClientRect();
+      if (phase === "d" && (t.clientX < r.left || t.clientX > r.right || t.clientY < r.top || t.clientY > r.bottom)) return;
+      var x = (t.clientX - r.left) * canvas.width / r.width, y = (t.clientY - r.top) * canvas.height / r.height;
+      try { window.unityInstance.SendMessage("Swooosh", "WebTouch", phase + " " + x.toFixed(1) + " " + y.toFixed(1)); } catch (err) { lastError = String(err); }
+    }
+    var opt = { capture: true, passive: true };
+    window.addEventListener("touchstart", function (e) { touch("d", e); }, opt);
+    window.addEventListener("touchmove", function (e) { touch("m", e); }, opt);
+    window.addEventListener("touchend", function (e) { touch("u", e); }, opt);
+    window.addEventListener("touchcancel", function (e) { touch("u", e); }, opt);
+
     function showError(msg) {
+      if (window.unityInstance) { showHalt(String(msg).slice(0, 300)); return; }
       var e = document.querySelector("#error");
       e.textContent = (tr ? "Oyun açılamadı: " : "Could not start the game: ") + msg;
       e.style.display = "block";
@@ -71,7 +113,7 @@
     }
 
     var script = document.createElement("script");
-    script.src = buildUrl + "/WebGL.loader.js?v=521c594622";
+    script.src = buildUrl + "/WebGL.loader.js?v=b69c6b432f";
     script.onload = function () {
       createUnityInstance(canvas, config, function (p) {
         document.querySelector("#fill").style.width = Math.round(p * 100) + "%";
@@ -81,6 +123,11 @@
         l.style.opacity = "0";
         setTimeout(function () { l.remove(); }, 500);
         canvas.focus();
+        lastFrame = Date.now();
+        setInterval(function () {
+          if (document.visibilityState === "visible" && Date.now() - lastFrame > 4000) showHalt(lastError || "no frames");
+          else if (document.visibilityState !== "visible") lastFrame = Date.now();
+        }, 1000);
       }).catch(showError);
     };
     script.onerror = function () { showError(tr ? "dosyalar yüklenemedi." : "files failed to load."); };
