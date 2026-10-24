@@ -62,12 +62,12 @@
     var config = {
       arguments: [],
       dataUrl: buildUrl + "/WebGL.data.unityweb",
-      frameworkUrl: buildUrl + "/WebGL.framework.js.unityweb?v=b69c6b432f",
-      codeUrl: buildUrl + "/WebGL.wasm.unityweb?v=b69c6b432f",
+      frameworkUrl: buildUrl + "/WebGL.framework.js.unityweb?v=448e28a8f2",
+      codeUrl: buildUrl + "/WebGL.wasm.unityweb?v=448e28a8f2",
       streamingAssetsUrl: "StreamingAssets",
       companyName: "Funday Morning",
       productName: "Swooosh!",
-      productVersion: "1.0.0",
+      productVersion: "0.9.0",
       // Telefonlarda çözünürlük 2x ile sınırlı: pil ve ısınma için.
       devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
       showBanner: function (msg, type) { if (type === "error") showError(msg); },
@@ -113,7 +113,7 @@
     }
 
     var script = document.createElement("script");
-    script.src = buildUrl + "/WebGL.loader.js?v=b69c6b432f";
+    script.src = buildUrl + "/WebGL.loader.js?v=448e28a8f2";
     script.onload = function () {
       createUnityInstance(canvas, config, function (p) {
         document.querySelector("#fill").style.width = Math.round(p * 100) + "%";
